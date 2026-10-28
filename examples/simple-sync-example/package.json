@@ -1,0 +1,17 @@
+{
+  "name": "simple-sync-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simple sync transform example for PARANOD SDK",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@paranod/plugin-sdk": "file:../../"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
+  }
+}

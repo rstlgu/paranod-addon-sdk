@@ -1,0 +1,17 @@
+{
+  "name": "ip-lookup-complete-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Complete example showing all PARANOD SDK features",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@paranod/plugin-sdk": "file:../../"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
+  }
+}
