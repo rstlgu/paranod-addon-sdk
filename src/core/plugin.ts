@@ -15,6 +15,8 @@ import { InstallationRegistry } from '../registry/installation';
 import type { Server } from '../server/express';
 import crypto from 'node:crypto';
 import { validateTransformResult } from '../utils/builders';
+import { MemoryPollingJobStorage, type PollingJobStorage } from '../jobs/storage';
+import { PollingJobTracker, POLLING_RESULT_TTL_MS } from '../jobs/polling';
 
 const MAX_RESULT_ENTITIES = 1000;
 const MAX_RESULT_EDGES = 2000;
@@ -34,6 +36,7 @@ export class ParanodPlugin {
   private multiTenant = false;
   private secretProvider?: WebhookSecretProvider;
   private registry?: InstallationRegistry;
+  private pollingStorage: PollingJobStorage = new MemoryPollingJobStorage();
 
   constructor(config: PluginConfig) {
     this.config = config;
@@ -209,6 +212,40 @@ export class ParanodPlugin {
     });
 
     return { jobId };
+  }
+
+  /** Configure persistent result storage before accepting polling requests. */
+  setPollingJobStorage(storage: PollingJobStorage): void {
+    this.pollingStorage = storage;
+  }
+
+  async getPollingJob(jobId: string, workspaceId: string, transformId: string) {
+    const job = await this.pollingStorage.get(jobId);
+    return job?.workspaceId === workspaceId && job.transformId === transformId ? job : null;
+  }
+
+  async executePollingTransform(transformId: string, input: TransformInput, workspaceId: string) {
+    const transform = this.asyncTransforms.get(transformId);
+    if (!transform) throw new Error('Async transform not found');
+    const record = {
+      jobId: crypto.randomUUID(), workspaceId, transformId,
+      status: 'processing' as const, progress: 0,
+      expiresAt: Date.now() + POLLING_RESULT_TTL_MS
+    };
+    // Persist before replying. Completed results remain available for repeated reads.
+    await this.pollingStorage.save(record);
+    const tracker = new PollingJobTracker(record, this.pollingStorage);
+    setImmediate(async () => {
+      try {
+        const result = await transform.handler(input, input.config || {}, tracker);
+        await tracker.complete(this.prepareTransformResult(result, input.entity.id));
+      } catch {
+        // Provider errors may contain URLs or credentials. Keep diagnostics server-side.
+        try { await tracker.fail('Addon operation failed'); }
+        catch { console.error('Could not persist terminal polling job status'); }
+      }
+    });
+    return { jobId: record.jobId };
   }
 
   /**

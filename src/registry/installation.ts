@@ -257,11 +257,12 @@ export class InstallationRegistry implements WebhookSecretProvider {
       throw new Error('workspaceId and platformUrl are required');
     }
     const platform = new URL(platformUrl);
-    const local = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1', '[::1]'].includes(platform.hostname);
     if (platform.username || platform.password || platform.search || platform.hash ||
-        (platform.protocol !== 'https:' && !(local && platform.protocol === 'http:'))) {
-      throw new Error('platformUrl must be HTTPS (loopback HTTP is allowed in development only)');
+        !['http:', 'https:'].includes(platform.protocol)) {
+      throw new Error('platformUrl must be an HTTP(S) URL without credentials, query or fragment');
     }
+    // Metadata only: polling never connects to this address. Callback requests
+    // enforce HTTPS separately at execution time, before any outbound request.
     const normalizedPlatformUrl = platform.toString().replace(/\/+$/, '');
 
     console.log(`[REGISTRY] Registration request from workspace: ${workspaceId}`);

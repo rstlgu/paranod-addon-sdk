@@ -46,6 +46,8 @@ export {
 // Jobs
 export { JobProgressTracker, JobQueue, InMemorySecretProvider } from './jobs/progress';
 export type { WebhookSecretProvider } from './jobs/progress';
+export { MemoryPollingJobStorage, EncryptedFilePollingJobStorage } from './jobs/storage';
+export type { PollingJob, PollingJobStorage } from './jobs/storage';
 
 // Registry & Multi-tenant
 export {

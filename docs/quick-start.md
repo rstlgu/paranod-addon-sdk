@@ -5,7 +5,7 @@ The essential sequence is:
 
 1. Define a `ParanodPlugin`.
 2. Register synchronous or asynchronous transforms.
-3. Configure a persistent `InstallationRegistry`.
+3. Configure a persistent `InstallationRegistry`; for asynchronous actions also configure `EncryptedFilePollingJobStorage`.
 4. Start multi-tenant mode with an installation token and public URL.
 5. Install the personalized manifest URL from PARANOD.
 
@@ -58,6 +58,11 @@ await plugin.start({
   installationToken: process.env.ADDON_INSTALL_TOKEN
 });
 ```
+
+Paranod 2.1 may run on local HTTP. Only the addon needs a public HTTPS URL.
+Asynchronous actions use outbound polling when supported, without a platform
+domain or inbound port. Configure durable job storage as shown in the
+[README](../README.md#async-transforms).
 
 PARANOD calls transform routes with signed server-to-server headers. Unsigned
 manual requests are rejected intentionally. Test handlers directly in unit

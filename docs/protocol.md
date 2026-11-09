@@ -9,7 +9,7 @@ installation. Run the addon with `multiTenant: true` and a persistent
 The administrator configures an independent random installation token and storage
 encryption key, each at least 32 characters long. Keep both outside source control.
 Set `PUBLIC_URL` to the addon's HTTPS origin and place the storage file on a
-persistent volume. The platform origin must also use HTTPS in production.
+persistent volume. The platform origin may use HTTP, including localhost or a private LAN. It is metadata for outbound-only execution; callbacks validate their own HTTPS requirement separately.
 
 In Paranod, install the personalized URL:
 
@@ -25,8 +25,9 @@ requires a request signed with the existing workspace secret before rotating it.
 
 ## Transform requests
 
-Requests carry `transformId`, an `input.entity`, and an optional `callbackUrl` for
-asynchronous operations. Paranod signs the exact serialized body using the
+Requests carry `transformId` and an `input.entity`. Polling submissions add
+`resultDelivery: "polling"` and omit `callbackUrl`. Legacy callback submissions
+include `callbackUrl`; mixing a callback URL with polling is rejected. Paranod signs the exact serialized body using the
 installation's secret. The signed payload is:
 
 ```text
@@ -46,11 +47,39 @@ It inserts the authenticated workspace identifier into the handler input.
 workspace in its body. For multiple replicas, supply a shared atomic
 `RequestReplayStore`; the default replay cache belongs to one process.
 
-## Results and callbacks
+## Results and polling
 
-A synchronous handler returns entities and edges. The HTTP response wraps them
-in `{ async: false, result }`. An asynchronous handler receives a job context for
-progress updates and returns its final result; the SDK delivers the signed events.
+A synchronous handler returns entities and edges in `{ async: false, result }`.
+SDK 0.5 manifests add `pollingEndpoint` to asynchronous transforms, on the same
+origin as the transform endpoint. Paranod 2.1 chooses polling automatically.
+An asynchronous submission returns `{ async: true, jobId }`; the result is
+persisted by the SDK rather than pushed to the platform.
+
+Send a fresh signed `POST` to the declared polling endpoint with:
+
+```json
+{ "action": "status", "jobId": "the-returned-job-id", "transformId": "deep-scan" }
+```
+
+The status response contains `jobId`, `transformId`, `status` (`processing`,
+`completed`, `failed` or `cancelled`), and optional bounded progress fields.
+A completed response includes `result`; a failed/cancelled response may include
+`error`. Status responses use `Cache-Control: no-store`. Authentication, nonce
+replay protection and owner/transform checks run on every read. Unknown, expired
+and other-workspace jobs all return 404. Reads never re-execute a handler.
+
+Configure `EncryptedFilePollingJobStorage` on a persistent volume for a single
+addon process, or supply shared `PollingJobStorage` for replicas. Results expire
+one hour after completion. The built-in stores limit capacity to 256 records and
+64 MiB; each result is limited to 4 MiB. Capacity exhaustion rejects a write and
+does not silently evict existing jobs. The default memory store is for testing.
+An interrupted handler is not restarted automatically after a process restart.
+
+## Legacy callbacks
+
+A request containing `callbackUrl` and no explicit polling mode continues to use
+signed callbacks. Production callback URLs require HTTPS even if the registered
+platform URL uses HTTP. Loopback HTTP callbacks remain a development-only option.
 
 Callbacks must use the registered platform origin and the path
 `/api/webhooks/transforms/<platformJobId>`, without query parameters or fragments.

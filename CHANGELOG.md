@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Support HTTP localhost/LAN platform registration without weakening callback TLS checks.
+- Add signed, workspace-scoped polling for asynchronous transforms, with retained results and encrypted file storage.
+- Advertise polling endpoints while preserving the callback wire protocol for older platforms.
+- Document local installation, result retention, retries and restart behavior.
+
 ## 0.4.0 — 2026-10-28
 
 Initial release in `rstlgu/paranod-addon-sdk`, based on the 0.3 SDK API.

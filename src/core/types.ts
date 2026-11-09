@@ -315,6 +315,7 @@ export interface PluginManifest {
       endpoint: string;
       method: string;
       async: boolean;
+      pollingEndpoint?: string;
     }>;
     metadata: {
       tags: string[];
@@ -343,7 +344,8 @@ export interface WebhookPayload {
 export interface TransformRequest {
   transformId: string;
   input: TransformInput;
-  callbackUrl: string;
+  callbackUrl?: string;
+  resultDelivery?: 'polling' | 'callback';
 }
 
 /**

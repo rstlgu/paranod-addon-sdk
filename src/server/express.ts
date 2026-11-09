@@ -59,7 +59,8 @@ const TransformRequestSchema = z
         config: z.record(z.string(), z.unknown()).optional()
       })
       .strict(),
-    callbackUrl: z.string().url().max(2048).optional()
+    callbackUrl: z.string().url().max(2048).optional(),
+    resultDelivery: z.enum(['polling', 'callback']).optional()
   })
   .strict();
 
@@ -230,6 +231,26 @@ export class ExpressServer {
       }
     });
 
+    this.app.post('/jobs/status', async (req: Request, res: Response) => {
+      res.setHeader('Cache-Control', 'no-store');
+      const parsed = z.object({
+        action: z.literal('status'),
+        jobId: z.string().min(1).max(256),
+        transformId: z.string().min(1).max(128)
+      }).strict().safeParse(req.body);
+      if (!parsed.success) { res.status(400).json({error: 'Invalid status request'}); return; }
+      const workspaceId = await this.authenticatePlatformRequest(req, res);
+      if (!workspaceId) return;
+      try {
+        const job = await this.plugin.getPollingJob(parsed.data.jobId, workspaceId, parsed.data.transformId);
+        if (!job) { res.status(404).json({error: 'Job not found or expired'}); return; }
+        const {workspaceId: _owner, expiresAt: _expires, ...status} = job;
+        res.json(status);
+      } catch {
+        res.status(503).json({error: 'Job storage unavailable'});
+      }
+    });
+
     for (const transform of this.plugin.getAllTransforms()) {
       this.app.post(`/${transform.id}`, async (req: Request, res: Response) => {
         try {
@@ -286,6 +307,16 @@ export class ExpressServer {
 
     const isAsync = this.plugin.isAsyncTransform(transformId);
     if (isAsync) {
+      const delivery = body.resultDelivery ?? (body.callbackUrl ? 'callback' : 'polling');
+      if (delivery === 'polling') {
+        if (!workspaceId || body.callbackUrl) {
+          res.status(400).json({error: 'Polling requires a workspace and no callback URL'});
+          return;
+        }
+        const result = await this.plugin.executePollingTransform(transformId, body.input, workspaceId);
+        res.json({async: true, jobId: result.jobId, message: 'Job queued for polling'});
+        return;
+      }
       if (!body.callbackUrl || !workspaceId) {
         res.status(400).json({ error: 'Missing callbackUrl or workspaceId' });
         return;
@@ -408,7 +439,10 @@ export class ExpressServer {
       const callback = new URL(callbackUrl);
       const platform = new URL(installation.platformUrl);
       const prefix = platform.pathname.replace(/\/$/, '') + '/api/webhooks/transforms/';
+      const localDevelopment = process.env.NODE_ENV !== 'production' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(callback.hostname);
       return (
+        (callback.protocol === 'https:' || (localDevelopment && callback.protocol === 'http:')) &&
         !callback.username &&
         !callback.password &&
         !callback.search && !callback.hash &&

@@ -1,5 +1,6 @@
 import {
   EncryptedFileStorage,
+  EncryptedFilePollingJobStorage,
   InstallationRegistry,
   ParanodPlugin,
   ResultBuilder,
@@ -60,6 +61,11 @@ plugin.enableMultiTenant(
     )
   )
 );
+
+plugin.setPollingJobStorage(new EncryptedFilePollingJobStorage(
+  process.env.ADDON_JOBS_PATH || './data/jobs.enc',
+  storageKey
+));
 
 void plugin.start({
   port: Number(process.env.PORT || 3001),

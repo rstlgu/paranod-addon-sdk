@@ -187,8 +187,7 @@ classifications and store the original type name in `metadata`.
       "type": "ip",
       "value": "8.8.8.8"
     }
-  },
-  "callbackUrl": "https://app.example.com/api/webhooks/transforms/scan-job-12345"
+  }
 }
 ```
 
@@ -251,9 +250,27 @@ classifications and store the original type name in `metadata`.
 }
 ```
 
-## Webhook for Async Jobs
+## Polling for Async Jobs
 
-When an async job completes, the SDK sends a webhook to the registered callback URL.
+For an asynchronous transform advertising `pollingEndpoint`, the submission adds
+`"resultDelivery": "polling"` and omits `callbackUrl`. The platform retrieves the
+result with signed POST requests to that endpoint:
+
+```json
+{ "action": "status", "jobId": "scan-job-12345", "transformId": "lookup-ip" }
+```
+
+The response contains the same identifiers and a `status`. While processing it
+may include `progress` and `progressMessage`; once completed it includes the
+same validated `result` object as a synchronous response. Failed or cancelled
+jobs may include `error`. Repeated reads return the stored result without
+executing the transform again. See the [protocol guide](protocol.md) for
+ownership checks, result storage and retention.
+
+## Webhook for Legacy Async Jobs
+
+When a submission includes a `callbackUrl`, the SDK sends signed webhook events
+to that registered HTTPS destination instead of using polling.
 The callback has no query token: its origin, path and HMAC signature identify the
 request. The examples below abbreviate entity data; see the [protocol guide](protocol.md)
 for request authentication and installation.

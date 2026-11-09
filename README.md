@@ -6,13 +6,14 @@ TypeScript SDK for external addons for the [Paranod open-source OSINT framework]
 
 ## Security Contract
 
-SDK 0.4 implements the platform addon protocol:
+SDK 0.5 implements the platform addon protocol:
 
 - personalized manifest and registration tokens;
-- HMAC-SHA256 signed transform and unregister requests;
+- HMAC-SHA256 signed transform, polling and unregister requests;
 - timestamp and nonce replay protection;
 - isolated webhook secrets per workspace;
-- callback origin validation;
+- local HTTP platform registration with outbound-only execution;
+- callback origin and HTTPS validation when callbacks are used;
 - idempotent webhook event IDs;
 - bounded request bodies and transform results;
 - encrypted persistent storage for single-instance deployments.
@@ -30,10 +31,10 @@ npm ci
 npm pack
 ```
 
-Then install the generated `paranod-plugin-sdk-0.4.0.tgz` in your addon project:
+Then install the generated `paranod-plugin-sdk-0.5.0.tgz` in your addon project:
 
 ```bash
-npm install /absolute/path/to/paranod-plugin-sdk-0.4.0.tgz
+npm install /absolute/path/to/paranod-plugin-sdk-0.5.0.tgz
 ```
 
 The import name remains `@paranod/plugin-sdk`. This repository release does not
@@ -177,8 +178,23 @@ plugin.asyncTransform({
 });
 ```
 
-The SDK signs webhook events, assigns a unique `eventId`, and retries delivery.
-The platform deduplicates those events.
+Configure durable result storage before starting an addon with asynchronous actions:
+
+```typescript
+import { EncryptedFilePollingJobStorage } from '@paranod/plugin-sdk';
+plugin.setPollingJobStorage(new EncryptedFilePollingJobStorage(
+  process.env.ADDON_JOBS_PATH || './data/jobs.enc',
+  process.env.ADDON_STORAGE_ENCRYPTION_KEY!
+));
+```
+
+Paranod 2.1 automatically chooses polling when the manifest declares `pollingEndpoint`. The platform may use HTTP on localhost or a LAN: only the addon's public endpoint needs HTTPS. The SDK receives the operation once, stores progress and results, and answers signed status requests. It never connects back to that platform in polling mode.
+
+Results remain available for one hour after completion, with a 4 MiB result limit. The supplied stores keep at most 256 unexpired jobs and 64 MiB of serialized records, rejecting new writes at capacity instead of silently evicting accepted jobs. File storage is encrypted and atomically replaced, for a single addon process. Persist its volume and key. The default memory result store is only suitable for development; it loses results on restart. For multiple replicas, implement a shared `PollingJobStorage` alongside shared installation storage and replay protection.
+
+Completed results survive a restart with persistent storage. A handler interrupted by an addon restart is not automatically re-executed: its pending record eventually expires and the platform applies its timeout. Do not repeat provider operations merely because a status request was retried.
+
+Requests containing a callback URL still use the established callback protocol. Production callbacks require HTTPS at the registered platform origin; events retain their signatures, stable retry identifiers and deduplication. This preserves compatibility with older HTTPS platform installations.
 
 ## HTTP Routes
 
@@ -189,6 +205,7 @@ The platform deduplicates those events.
 | `POST /register` | Bearer install token |
 | `POST /unregister` | Signed workspace request |
 | `POST /<transformId>` | Signed workspace request |
+| `POST /jobs/status` | Signed workspace request, job owner and transform checks |
 | `GET /stats` | Admin bearer token, otherwise returns 404 |
 
 ## Publication Checks

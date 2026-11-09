@@ -90,6 +90,7 @@ export class ManifestGenerator {
           endpoint: `${options.endpoint}/${transform.id}`,
           method: 'POST',
           async,
+          ...(async ? { pollingEndpoint: `${options.endpoint.replace(/\/+$/, '')}/jobs/status` } : {}),
         })),
         metadata: {
           tags: options.tags || [],
