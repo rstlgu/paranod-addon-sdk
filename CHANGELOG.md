@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — 2026-11-09
+
+- Keep the SDK under MIT while the independently maintained application adopts AGPLv3.
+- Update the runnable addon walkthrough to the new Paranod 2.3.0 source and documentation.
+- No protocol or runtime API changes.
+
 ## 0.5.0 — 2026-11-09
 
 - Support HTTP localhost/LAN platform registration without weakening callback TLS checks.

@@ -22,10 +22,10 @@ Do not expose transform routes through an adapter that bypasses the SDK server.
 
 ## Install
 
-Use Node.js 22 or newer. The [0.5.0 release](https://github.com/rstlgu/paranod-addon-sdk/releases/tag/v0.5.0) includes a compiled package and `SHA256SUMS`. Download both, verify the package with `sha256sum -c SHA256SUMS` (macOS: `shasum -a 256 -c SHA256SUMS`), then install it:
+Use Node.js 22 or newer. The [0.5.1 release](https://github.com/rstlgu/paranod-addon-sdk/releases/tag/v0.5.1) includes a compiled package and `SHA256SUMS`. Download both, verify the package with `sha256sum -c SHA256SUMS` (macOS: `shasum -a 256 -c SHA256SUMS`), then install it:
 
 ```sh
-npm install ./paranod-plugin-sdk-0.5.0.tgz
+npm install ./paranod-plugin-sdk-0.5.1.tgz
 ```
 
 Alternatively, build a package directly from this repository:
@@ -37,10 +37,10 @@ npm ci
 npm pack
 ```
 
-Then install the generated `paranod-plugin-sdk-0.5.0.tgz` in your addon project:
+Then install the generated `paranod-plugin-sdk-0.5.1.tgz` in your addon project:
 
 ```bash
-npm install /absolute/path/to/paranod-plugin-sdk-0.5.0.tgz
+npm install /absolute/path/to/paranod-plugin-sdk-0.5.1.tgz
 ```
 
 The import name remains `@paranod/plugin-sdk`. This repository release does not
