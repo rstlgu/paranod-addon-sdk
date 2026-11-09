@@ -1,11 +1,13 @@
 # Changelog
 
-## 0.5.0
+## 0.5.0 — 2026-11-09
 
 - Support HTTP localhost/LAN platform registration without weakening callback TLS checks.
 - Add signed, workspace-scoped polling for asynchronous transforms, with retained results and encrypted file storage.
 - Advertise polling endpoints while preserving the callback wire protocol for older platforms.
 - Document local installation, result retention, retries and restart behavior.
+- Publish a compiled package with checksums through a CI-gated GitHub release.
+- Add a runnable polling addon with persistent storage and explicitly synthetic results.
 
 ## 0.4.0 — 2026-10-28
 
